@@ -173,8 +173,13 @@ class QuizGame:
         print("-" * 40)
 
     def show_best_score(self) -> None:
-        """최고 점수 확인 (이후 커밋에서 구현 예정)"""
-        print("\n⏳ 점수 확인 기능이 곧 준비됩니다.")
+        """기록된 최고 점수를 확인하고, 플레이 이력이 없는 경우를 처리합니다."""
+        print()
+        if self.best_score == 0:
+            print("📌 아직 달성한 최고 점수 기록이 없습니다 (0점).")
+            print("   메뉴 1번을 선택해 퀴즈를 풀고 최고 점수를 기록해 보세요!")
+        else:
+            print(f"🏆 현재 기록된 최고 점수: {self.best_score}점")
 
     def exit_game(self) -> None:
         """게임을 안전하게 저장하고 종료합니다."""
