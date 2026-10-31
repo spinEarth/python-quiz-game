@@ -137,8 +137,28 @@ class QuizGame:
         print("=" * 40)
 
     def add_quiz(self) -> None:
-        """퀴즈 추가 (이후 커밋에서 구현 예정)"""
-        print("\n⏳ 퀴즈 추가 기능이 곧 준비됩니다.")
+        """새로운 퀴즈를 등록받아 리스트에 추가하고 state.json에 즉시 저장합니다."""
+        print("\n📌 새로운 퀴즈를 추가합니다.")
+
+        question = self.prompt_non_empty_str("문제를 입력하세요: ")
+
+        choices: List[str] = []
+        for i in range(1, 5):
+            choice_text = self.prompt_non_empty_str(f"선택지 {i}: ")
+            choices.append(choice_text)
+
+        answer = self.prompt_int("정답 번호 (1-4): ", 1, 4)
+
+        try:
+            new_quiz = Quiz(question=question, choices=choices, answer=answer)
+            self.quizzes.append(new_quiz)
+            saved = self.storage.save_state(self.quizzes, self.best_score)
+            if saved:
+                print(f"\n✅ 퀴즈가 성공적으로 추가 및 저장되었습니다! (총 {len(self.quizzes)}개)")
+            else:
+                print("\n⚠️ 퀴즈가 메모리에 추가되었으나 파일 저장에 실패했습니다.")
+        except ValueError as err:
+            print(f"\n❌ 퀴즈 등록 중 검증 오류가 발생했습니다: {err}")
 
     def show_quizzes(self) -> None:
         """퀴즈 목록 조회 (이후 커밋에서 구현 예정)"""
