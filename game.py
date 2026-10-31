@@ -1,4 +1,9 @@
-"""QuizGame class and interactive game loop."""
+"""QuizGame class and interactive game loop.
+
+This module coordinates quiz interactions, manages runtime game state,
+validates user input according to mission specifications, and handles
+graceful termination on interrupt signals.
+"""
 
 import sys
 from typing import List, Optional
@@ -12,35 +17,51 @@ class QuizGame:
     Attributes:
         storage (QuizStorage): 상태 저장 및 불러오기를 담당하는 객체
         quizzes (List[Quiz]): 현재 등록된 퀴즈 목록
-        best_score (int): 기록된 최고 점수
-        is_running (bool): 게임 루프 실행 여부
+        best_score (int): 기록된 최고 점수 (0~100)
+        is_running (bool): 메인 메뉴 루프 실행 플래그
     """
+
+    MENU_OPTIONS = {
+        1: "퀴즈 풀기",
+        2: "퀴즈 추가",
+        3: "퀴즈 목록",
+        4: "점수 확인",
+        5: "종료",
+    }
 
     def __init__(self, storage: Optional[QuizStorage] = None) -> None:
         self.storage = storage or QuizStorage("state.json")
         self.quizzes: List[Quiz] = []
         self.best_score: int = 0
         self.is_running: bool = False
-        self._initialize_data()
+        self.load_game_data()
 
-    def _initialize_data(self) -> None:
-        """state.json에서 데이터를 불러와 메모리에 적재합니다."""
-        self.quizzes, self.best_score, msg = self.storage.load_state()
-        print(msg)
+    def load_game_data(self) -> None:
+        """state.json 파일로부터 게임 데이터(퀴즈 목록, 최고 점수)를 적재합니다."""
+        self.quizzes, self.best_score, load_message = self.storage.load_state()
+        print(load_message)
+
+    def save_game_data(self) -> bool:
+        """현재 게임 상태를 state.json 파일에 저장합니다."""
+        return self.storage.save_state(self.quizzes, self.best_score)
 
     def prompt_int(self, prompt_text: str, min_val: int, max_val: int) -> int:
         """공통 입력 예외 처리가 적용된 정수 입력 도우미 메서드.
 
-        공백 제거, 빈 입력, 비숫자 입력, 허용 범위 초과를 모두 검증하며
-        올바른 입력이 들어올 때까지 재입력을 유도합니다.
+        요구사항 충족:
+        - 입력 앞뒤 공백 제거 (strip)
+        - 빈 입력(Enter) 처리
+        - 정수 변환 불가(abc 등) 처리
+        - 허용 범위 밖 숫자(범위 초과/미만) 처리
+        - 유효할 때까지 친절한 안내 후 재입력
 
         Args:
-            prompt_text (str): 사용자에게 보여줄 프롬프트 문구
-            min_val (int): 입력 가능한 최소 정수
-            max_val (int): 입력 가능한 최대 정수
+            prompt_text (str): 사용자에게 보여줄 안내 문구
+            min_val (int): 허용 최소 정수
+            max_val (int): 허용 최대 정수
 
         Returns:
-            int: 유효성 검사를 통과한 정수
+            int: 검증을 통과한 정수값
         """
         while True:
             raw_input = input(prompt_text).strip()
@@ -52,7 +73,7 @@ class QuizGame:
             try:
                 val = int(raw_input)
             except ValueError:
-                print(f"⚠️ 잘못된 입력입니다. {min_val}~{max_val} 사이의 정수 숫자를 입력하세요.\n")
+                print(f"⚠️ 잘못된 입력입니다. {min_val}~{max_val} 사이의 숫자를 입력하세요.\n")
                 continue
 
             if val < min_val or val > max_val:
@@ -64,7 +85,7 @@ class QuizGame:
             return val
 
     def prompt_non_empty_str(self, prompt_text: str) -> str:
-        """비어 있지 않은 문자열 입력을 보장하는 입력 도우미 메서드."""
+        """공백을 제외한 유효 문자열을 입력받는 도우미 메서드."""
         while True:
             text = input(prompt_text).strip()
             if not text:
@@ -73,33 +94,30 @@ class QuizGame:
             return text
 
     def display_menu(self) -> None:
-        """메인 콘솔 메뉴를 출력합니다."""
+        """메인 콘솔 메뉴를 양식에 맞춰 출력합니다."""
         print()
         print("=" * 40)
         print("        🎯 나만의 퀴즈 게임 🎯")
         print("=" * 40)
-        print("1. 퀴즈 풀기")
-        print("2. 퀴즈 추가")
-        print("3. 퀴즈 목록")
-        print("4. 점수 확인")
-        print("5. 종료")
+        for num, title in self.MENU_OPTIONS.items():
+            print(f"{num}. {title}")
         print("=" * 40)
 
     def handle_menu_selection(self, choice: int) -> None:
-        """사용자가 선택한 메뉴 번호에 따라 해당 기능을 분기 실행합니다."""
-        if choice == 1:
-            self.play_quiz()
-        elif choice == 2:
-            self.add_quiz()
-        elif choice == 3:
-            self.show_quizzes()
-        elif choice == 4:
-            self.show_best_score()
-        elif choice == 5:
-            self.exit_game()
+        """선택한 메뉴 번호에 따라 개별 핸들러 메서드로 분기합니다."""
+        handlers = {
+            1: self.play_quiz,
+            2: self.add_quiz,
+            3: self.show_quizzes,
+            4: self.show_best_score,
+            5: self.exit_game,
+        }
+        handler = handlers.get(choice)
+        if handler:
+            handler()
 
     def play_quiz(self) -> None:
-        """저장된 퀴즈를 순차 출제하고 채점하여 결과를 안내 및 최고 점수를 갱신합니다."""
+        """저장된 퀴즈를 출제하고, 정답 여부를 판별하여 점수를 산출 및 갱신합니다."""
         if not self.quizzes:
             print("\n⚠️ 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해 주세요!")
             return
@@ -131,13 +149,13 @@ class QuizGame:
         if score > self.best_score:
             print(f"🎉 축하합니다! 새로운 최고 점수입니다! (이전: {self.best_score}점 -> 현재: {score}점)")
             self.best_score = score
-            self.storage.save_state(self.quizzes, self.best_score)
+            self.save_game_data()
         else:
             print(f"📌 현재 최고 점수: {self.best_score}점")
         print("=" * 40)
 
     def add_quiz(self) -> None:
-        """새로운 퀴즈를 등록받아 리스트에 추가하고 state.json에 즉시 저장합니다."""
+        """사용자로부터 신규 문제/선택지/정답을 입력받아 검증 후 저장합니다."""
         print("\n📌 새로운 퀴즈를 추가합니다.")
 
         question = self.prompt_non_empty_str("문제를 입력하세요: ")
@@ -152,8 +170,7 @@ class QuizGame:
         try:
             new_quiz = Quiz(question=question, choices=choices, answer=answer)
             self.quizzes.append(new_quiz)
-            saved = self.storage.save_state(self.quizzes, self.best_score)
-            if saved:
+            if self.save_game_data():
                 print(f"\n✅ 퀴즈가 성공적으로 추가 및 저장되었습니다! (총 {len(self.quizzes)}개)")
             else:
                 print("\n⚠️ 퀴즈가 메모리에 추가되었으나 파일 저장에 실패했습니다.")
@@ -161,7 +178,7 @@ class QuizGame:
             print(f"\n❌ 퀴즈 등록 중 검증 오류가 발생했습니다: {err}")
 
     def show_quizzes(self) -> None:
-        """현재 등록된 모든 퀴즈 목록을 번호와 함께 출력합니다."""
+        """현재 등록된 모든 퀴즈 목록을 번호순으로 출력합니다."""
         if not self.quizzes:
             print("\n⚠️ 등록된 퀴즈가 없습니다.")
             return
@@ -173,7 +190,7 @@ class QuizGame:
         print("-" * 40)
 
     def show_best_score(self) -> None:
-        """기록된 최고 점수를 확인하고, 플레이 이력이 없는 경우를 처리합니다."""
+        """기록된 최고 점수를 확인하고 미플레이 상태를 안내합니다."""
         print()
         if self.best_score == 0:
             print("📌 아직 달성한 최고 점수 기록이 없습니다 (0점).")
@@ -182,26 +199,27 @@ class QuizGame:
             print(f"🏆 현재 기록된 최고 점수: {self.best_score}점")
 
     def exit_game(self) -> None:
-        """게임을 안전하게 저장하고 종료합니다."""
+        """게임을 정상 저장 후 종료합니다."""
         print("\n💾 현재 게임 상태를 저장하는 중...")
-        self.storage.save_state(self.quizzes, self.best_score)
+        self.save_game_data()
         print("👋 퀴즈 게임을 종료합니다. 이용해 주셔서 감사합니다!")
         self.is_running = False
 
     def safe_shutdown(self) -> None:
-        """강제 인터럽트 또는 예외 발생 시 비정상 종료를 방지하고 안전하게 저장합니다."""
-        print("\n\n⚠️ 프로그램이 안전 종료 신호(KeyboardInterrupt / EOF)를 감지했습니다.")
-        print("💾 가능한 범위에서 데이터를 저장하고 프로그램을 안전하게 종료합니다...")
-        self.storage.save_state(self.quizzes, self.best_score)
+        """비정상 시그널(Ctrl+C, EOF) 감지 시 안전하게 저장 후 종료합니다."""
+        print("\n\n⚠️ 안전 종료 신호(KeyboardInterrupt / EOF)가 감지되었습니다.")
+        print("💾 상태를 안전하게 저장한 뒤 프로그램을 종료합니다...")
+        self.save_game_data()
         print("👋 안전하게 종료되었습니다. 안녕히 가세요!")
+        self.is_running = False
 
     def run(self) -> None:
-        """게임의 메인 루프를 시작합니다."""
+        """메인 실행 루프입니다."""
         self.is_running = True
         try:
             while self.is_running:
                 self.display_menu()
-                choice = self.prompt_int("선택 (1-5): ", 1, 5)
+                choice = self.prompt_int("선택: ", 1, 5)
                 self.handle_menu_selection(choice)
         except (KeyboardInterrupt, EOFError):
             self.safe_shutdown()
