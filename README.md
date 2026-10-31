@@ -137,3 +137,6 @@ python-quiz-game/
 * 1c1b89f Feat: Quiz 클래스 및 선택지/정답 검증 로직 구현
 * aee147c Chore: 프로젝트 초기 설정 (.gitignore, README.md 생성)
 ```
+
+### ✅ Clone 및 Pull 동기화 실습 완료
+- 이 섹션은 원격 저장소를 별도 디렉터리에 복제(clone)한 후 수정 및 푸시하여, 원본 로컬 디렉터리에서 풀(pull) 검증을 거친 내역입니다.
