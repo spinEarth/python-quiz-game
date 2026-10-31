@@ -161,8 +161,16 @@ class QuizGame:
             print(f"\n❌ 퀴즈 등록 중 검증 오류가 발생했습니다: {err}")
 
     def show_quizzes(self) -> None:
-        """퀴즈 목록 조회 (이후 커밋에서 구현 예정)"""
-        print("\n⏳ 퀴즈 목록 기능이 곧 준비됩니다.")
+        """현재 등록된 모든 퀴즈 목록을 번호와 함께 출력합니다."""
+        if not self.quizzes:
+            print("\n⚠️ 등록된 퀴즈가 없습니다.")
+            return
+
+        print(f"\n📋 등록된 퀴즈 목록 (총 {len(self.quizzes)}개)")
+        print("-" * 40)
+        for idx, quiz in enumerate(self.quizzes, start=1):
+            print(f"[{idx}] {quiz.question}")
+        print("-" * 40)
 
     def show_best_score(self) -> None:
         """최고 점수 확인 (이후 커밋에서 구현 예정)"""
