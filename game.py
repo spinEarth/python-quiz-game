@@ -99,8 +99,42 @@ class QuizGame:
             self.exit_game()
 
     def play_quiz(self) -> None:
-        """퀴즈 풀기 (다음 커밋에서 구현 예정)"""
-        print("\n⏳ 퀴즈 풀기 기능이 곧 준비됩니다.")
+        """저장된 퀴즈를 순차 출제하고 채점하여 결과를 안내 및 최고 점수를 갱신합니다."""
+        if not self.quizzes:
+            print("\n⚠️ 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해 주세요!")
+            return
+
+        total_questions = len(self.quizzes)
+        print(f"\n📝 퀴즈를 시작합니다! (총 {total_questions}문제)")
+
+        correct_count = 0
+        for idx, quiz in enumerate(self.quizzes, start=1):
+            print("\n" + "-" * 40)
+            print(quiz.get_display_text(question_number=idx))
+            print()
+            user_answer = self.prompt_int("정답 입력 (1-4): ", 1, 4)
+
+            if quiz.is_correct(user_answer):
+                print("✅ 정답입니다!")
+                correct_count += 1
+            else:
+                correct_choice_text = quiz.choices[quiz.answer - 1]
+                print(
+                    f"❌ 오답입니다! (정답: {quiz.answer}번 - {correct_choice_text})"
+                )
+
+        score = int((correct_count / total_questions) * 100)
+
+        print("\n" + "=" * 40)
+        print(f"🏆 결과: {total_questions}문제 중 {correct_count}문제 정답! ({score}점)")
+
+        if score > self.best_score:
+            print(f"🎉 축하합니다! 새로운 최고 점수입니다! (이전: {self.best_score}점 -> 현재: {score}점)")
+            self.best_score = score
+            self.storage.save_state(self.quizzes, self.best_score)
+        else:
+            print(f"📌 현재 최고 점수: {self.best_score}점")
+        print("=" * 40)
 
     def add_quiz(self) -> None:
         """퀴즈 추가 (이후 커밋에서 구현 예정)"""
