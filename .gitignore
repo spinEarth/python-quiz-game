@@ -32,6 +32,9 @@ wheels/
 *.swp
 *.swo
 
-# Temporary files
+# Temporary & Backup files
 scratch/
 tmp/
+*.bak
+*.tmp
+*.corrupted.*
