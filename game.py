@@ -5,6 +5,7 @@ validates user input according to mission specifications, and handles
 graceful termination on interrupt signals.
 """
 
+import random
 import sys
 from typing import List, Optional
 from quiz import Quiz
@@ -125,8 +126,12 @@ class QuizGame:
         total_questions = len(self.quizzes)
         print(f"\n📝 퀴즈를 시작합니다! (총 {total_questions}문제)")
 
+        # 보너스 과제: random 모듈을 사용하여 퀴즈 출제 순서 랜덤 셔플
+        play_list = list(self.quizzes)
+        random.shuffle(play_list)
+
         correct_count = 0
-        for idx, quiz in enumerate(self.quizzes, start=1):
+        for idx, quiz in enumerate(play_list, start=1):
             print("\n" + "-" * 40)
             print(quiz.get_display_text(question_number=idx))
             print()
@@ -177,8 +182,30 @@ class QuizGame:
         except ValueError as err:
             print(f"\n❌ 퀴즈 등록 중 검증 오류가 발생했습니다: {err}")
 
+    def delete_quiz(self, index: int) -> bool:
+        """지정된 인덱스(0-based)의 퀴즈를 삭제하고 파일에 즉시 반영합니다.
+
+        Args:
+            index (int): 삭제할 퀴즈의 인덱스
+
+        Returns:
+            bool: 삭제 및 파일 저장 성공 여부
+        """
+        if index < 0 or index >= len(self.quizzes):
+            return False
+
+        removed_quiz = self.quizzes.pop(index)
+        if self.save_game_data():
+            print(f"\n🗑️ 퀴즈가 성공적으로 삭제되었습니다: \"{removed_quiz.question}\"")
+            return True
+        else:
+            # 저장 실패 시 롤백
+            self.quizzes.insert(index, removed_quiz)
+            print("\n⚠️ 퀴즈 삭제 후 파일 저장에 실패하여 복원되었습니다.")
+            return False
+
     def show_quizzes(self) -> None:
-        """현재 등록된 모든 퀴즈 목록을 번호순으로 출력합니다."""
+        """현재 등록된 모든 퀴즈 목록을 번호순으로 출력하고 선택적 삭제를 지원합니다."""
         if not self.quizzes:
             print("\n⚠️ 등록된 퀴즈가 없습니다.")
             return
@@ -188,6 +215,19 @@ class QuizGame:
         for idx, quiz in enumerate(self.quizzes, start=1):
             print(f"[{idx}] {quiz.question}")
         print("-" * 40)
+
+        # 퀴즈 삭제 옵션 (보너스 기능 연계)
+        print("💡 퀴즈를 삭제하려면 해당 번호를 입력하세요. (메인 메뉴로 복귀: 0 입력)")
+        del_choice = self.prompt_int("삭제할 번호 선택 (0: 취소): ", 0, len(self.quizzes))
+        if del_choice == 0:
+            return
+
+        target_quiz = self.quizzes[del_choice - 1]
+        confirm = input(f"❓ 정말 [{del_choice}]번 퀴즈를 삭제하시겠습니까? (y/N): ").strip().lower()
+        if confirm == "y":
+            self.delete_quiz(del_choice - 1)
+        else:
+            print("🚫 삭제가 취소되었습니다.")
 
     def show_best_score(self) -> None:
         """기록된 최고 점수를 확인하고 미플레이 상태를 안내합니다."""
